@@ -1,0 +1,27 @@
+{
+  "name": "dynadump",
+  "version": "0.1.0",
+  "description": "Exports DynamoDB tables onto local disk that can be imported back into local DynamoDB instance",
+  "dependencies": {
+    "fs-extra": "^8.1.0",
+    "stream-chain": "^2.2.1",
+    "stream-json": "^1.3.1",
+    "yargs": "^15.0.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^8.0.1",
+    "prettier": "^1.19.1",
+    "typescript": "^3.7.3"
+  },
+  "scripts": {
+    "build": "tsc --rootDir ./src",
+    "watch": "tsc -w --rootDir ./src",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prettier": "prettier --write \"src/**/*.ts\""
+  },
+  "author": "",
+  "license": "ISC",
+  "optionalDependencies": {
+    "aws-sdk": "^2.585.0"
+  }
+}

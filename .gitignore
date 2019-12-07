@@ -1,0 +1,14 @@
+.DS_Store
+
+# package directories
+node_modules/
+
+# IDE Cruft
+.idea/
+.vscode/
+
+# TSC output
+lib/
+
+# dynamodb export
+export/
