@@ -3,10 +3,13 @@ import { parser } from 'stream-json';
 import { pick } from 'stream-json/filters/Pick';
 import { streamArray } from 'stream-json/streamers/streamArray';
 import { chain } from 'stream-chain';
+import * as readline from 'readline';
+import * as chalk from 'chalk';
 
 export type ImportTableOptions = {
   importTableName: string;
   tableName: string;
+  rowImportLimit: number;
   AWS: any;
 };
 
@@ -42,11 +45,13 @@ export class ImportTable {
   _importTableName: string;
   _importTableDescription: TableDescription;
   _tableName: string;
+  _rowImportLimit: number;
   _dynamodb: any;
 
   constructor(options: ImportTableOptions) {
     this._importTableName = options.importTableName;
     this._tableName = options.tableName;
+    this._rowImportLimit = options.rowImportLimit;
 
     this._dynamodb = new options.AWS.DynamoDB({
       endpoint: 'http://localhost:8000',
@@ -57,15 +62,27 @@ export class ImportTable {
   }
 
   async process() {
+    console.log(chalk.blue.bgYellow.bold(`Starting import on ${this._importTableName}`));
+    console.log(chalk(`Destination table name: ${chalk.green(this._tableName)}`));
+    console.log(chalk(`Row import limit: ${chalk.green(this._rowImportLimit)}`));
+
     await this.readImportTableDescription();
     await this.dropTable();
     await this.createTable();
 
-    return this.importData();
+    try {
+      await this.importData();
+    } catch (error) {
+      console.log(error);
+    }
+
+    console.log(chalk.blue.bgGreen.bold(`Completed import on ${this._importTableName}`));
   }
 
   async readImportTableDescription() {
     this._importTableDescription = await fs.readJson(`./export/${this._importTableName}.json`);
+
+    console.log(chalk(`Table ${chalk.green(this._tableName)} description read.`));
   }
 
   async tableExists() {
@@ -80,11 +97,13 @@ export class ImportTable {
       return null;
     }
 
-    return this._dynamodb
+    await this._dynamodb
       .deleteTable({
         TableName: this._tableName,
       })
       .promise();
+
+    console.log(chalk(`Table ${chalk.red(this._tableName)} dropped.`));
   }
 
   async createTable() {
@@ -136,7 +155,9 @@ export class ImportTable {
       });
     });
 
-    return this._dynamodb.createTable(newTableDescription).promise();
+    await this._dynamodb.createTable(newTableDescription).promise();
+
+    console.log(chalk(`Table ${chalk.green(this._tableName)} created.`));
   }
 
   async writeItemToDynamo(item) {
@@ -149,21 +170,49 @@ export class ImportTable {
       .putItem(params)
       .promise()
       .catch((error) => {
-        console.log(error);
+        console.log(chalk(`${chalk.red(error)}`));
       });
   }
 
+  writeRowsWritten(rows) {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0, null);
+    let text = `items written: ${rows} \r`;
+    process.stdout.write(text);
+  }
+
   async importData() {
+    let itemsWrittenToDynamo = 0;
+    let streamClosed = false;
+
     return new Promise((resolve, reject) => {
+      const fileStream = fs.createReadStream(`./export/${this._importTableName}.data.json`);
+
       const pipeline = chain([
-        fs.createReadStream(`./export/${this._importTableName}.data.json`),
+        fileStream,
         parser(),
         pick({ filter: 'data' }),
         streamArray(),
-        (data) => this.writeItemToDynamo(data),
+        (data) => {
+          if (!streamClosed) {
+            return this.writeItemToDynamo(data);
+          }
+
+          return Promise.resolve();
+        },
       ]);
 
-      pipeline.on('data', () => process.stdout.write('.'));
+      pipeline.on('data', () => {
+        itemsWrittenToDynamo = itemsWrittenToDynamo + 1;
+
+        this.writeRowsWritten(itemsWrittenToDynamo);
+
+        if (this._rowImportLimit !== 0 && itemsWrittenToDynamo >= this._rowImportLimit) {
+          pipeline.destroy();
+          console.log('');
+          streamClosed = true;
+        }
+      });
 
       pipeline.on('end', () => {
         resolve();
@@ -174,10 +223,15 @@ export class ImportTable {
         reject(err);
       });
 
-      pipeline.on('finish', () => {
-        console.log('finish');
+      pipeline.on('close', () => {
         resolve();
       });
+
+      pipeline.on('finish', () => {
+        resolve();
+      });
+    }).catch((error) => {
+      console.log(chalk(`${chalk.red(error)}`));
     });
   }
 }

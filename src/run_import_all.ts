@@ -36,6 +36,7 @@ const importAll = async (opts) => {
       AWS,
       tableName: table.replace(replaceString, withString),
       importTableName: table,
+      rowImportLimit: opts.rowImportLimit,
     });
 
     await importTable.process();
@@ -67,6 +68,13 @@ const argv = yargs
       requiresArg: true,
       required: false,
       default: './export',
+    },
+    rowImportLimit: {
+      alias: 'l',
+      description: `limit the amount of rows imported`,
+      requiresArg: true,
+      required: false,
+      default: 0,
     },
   })
   .implies('with', 'replace').argv;

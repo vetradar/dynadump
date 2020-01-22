@@ -21,6 +21,13 @@ const argv = yargs
       required: false,
       default: '',
     },
+    rowImportLimit: {
+      alias: 'l',
+      description: `limit the amount of rows imported`,
+      requiresArg: true,
+      required: false,
+      default: 0,
+    },
   }).argv;
 
 const destinationTable = argv.destination || argv.source;
@@ -29,6 +36,7 @@ const importTable = new ImportTable({
   AWS,
   tableName: destinationTable,
   importTableName: argv.source,
+  rowImportLimit: argv.rowImportLimit || 0,
 });
 
 importTable
