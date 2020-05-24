@@ -15,12 +15,21 @@ const argv = yargs
       required: false,
       default: './export',
     },
+    ignore: {
+      type: 'array',
+      alias: 'i',
+      description: 'table names to skip export of',
+      requiresArg: true,
+      required: false,
+      default: '[]',
+    },
   })
   .implies('with', 'replace').argv;
 
 const exportDynamoDB = new ExportDynamoDB({
   AWS,
   path: argv.path,
+  ignore: argv.ignore,
 });
 
 exportDynamoDB.process().finally(() => console.log('done'));

@@ -44,7 +44,8 @@ My preferred method is to use [AWS Vault](https://github.com/99designs/aws-vault
 
 ```
 # -p path to export (optional default is ./export)
-> node lib/run_export_all [-p ./export]
+# -i table to ignore when exporting (eg. audit_log, defaults to exporting all)
+> node lib/run_export_all [-p ./export] [-i table -i to_ignore]
 ```
 
 # Importing
